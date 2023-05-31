@@ -1,7 +1,29 @@
+import RPi.GPIO as GPIO
 import datetime
 import time
 import random
+import requests
 
+#Set GPIO mode and disable warnings
+GPIO.setmode(GPIO.BCM)
+GPIO.setwarnings(False)
+
+#Set Servo pin
+foodservopin = 18
+waterservopin = 17
+frequency = 50
+
+initial_position = 0
+
+duty_cycle_min = 2.5
+duty_cycle_max = 12.5
+
+GPIO.setup(foodservopin, GPIO.OUT)
+GPIO.setup(waterservopin, GPIO.OUT)
+fservo = GPIO.PWM(foodservopin, frequency)
+fservo.start(0)
+wservo = GPIO.PWM(waterservopin, frequency)
+wservo.start(0)
 
 #When using test parameters, comment individual ranges out from time_ranges if current time is in range
 #Time checks for pellets
@@ -11,6 +33,9 @@ time_ranges = [
         (datetime.time(18, 0), datetime.time(19,0)), #6pm - 7pm
         (datetime.time(0, 0), datetime.time(1,0)) #12am - 1am
 ]
+
+enforce_limit = True #Email limit (every 6 hours) Set to False when testing
+last_notification_time = datetime.datetime.now()
 
 previous_weight = None #Variable to store the previous weight
 test_previous = None #Testing previous variable
@@ -25,30 +50,34 @@ test_wrange = True #Change to True when testing water dispensing time
 test_fweight = 340 #Testing food weight
 
 #Water bowl
+test_wweight = 340 #Testing water weight
+
 #--------------------------------------------------
 #Weight Check
 def foodcheck():
-        global previous_weight #Declared as a global variable
+        global previous_weight, test_fweight, test_previous #Declared as a global variable
         print("---[FOOD]---")
         print("Checking weight of food bowl...")
 
         detected_weight = get_weight()
 
-
+        '''
+        #Comment next three lines out when testing
         if previous_weight is not None and abs(previous_weight - detected_weight) <= 10:
                 print("Warning: Weight has not changed significantly since the last 6-hour check.")
-                warningemail()
+                warningemail()'''
 
         if test_previous is not None and abs(test_previous - test_fweight) <=10:
                 print("Test warning showing that food weight hasn't changed since last check.")
+                warningemail()
 
-        if detected_weight <= 340 or test_fweight <= 340: #Change 340 to the weight of your bowl + 10 grams
+        elif detected_weight <= 340 or test_fweight <= 340: #Change 340 to the weight of your bowl + 10 grams
                 print("Food is low. Refilling in progress...")
                 foodservo()
-        elif detected_weight > 1000 or test_fweight >= 1000:
+        elif detected_weight >= 1000 or test_fweight >= 1000:
                 print("A rabbit has jumped in the bowl.")
         else:
-                print("Test")
+                print("An error has occurred.")
 
         #Update previous weight with current weight
         previous_weight = detected_weight
@@ -57,22 +86,75 @@ def foodcheck():
 def watercheck():
         print("---[WATER]---")
         print("Checking weight of water bowl...")
-        waterservo()
+
+        detected_waterweight = get_waterweight()
+        if detected_waterweight <= 360 or test_wweight <= 360: #Change 360 to the weight of your bowl + 30 grams
+                print("Water is low. Refilling in progress...")
+                waterservo()
+        elif detected_waterweight >= 1000 or test_wweight >= 1000:
+                print("Splash! A rabbit has jumped in the bowl.")
+        else:
+                print("An error has occurred.")
 
 def get_weight():
         #replace this with load cell sensor
         return 341.5 #sample weight
         #return random.uniform(330, 350) #Random weight between 330 and 350 for testing
 
+def get_waterweight():
+        #replace this with load cell sensor
+        return 341.5 #sample weight
+
 def foodservo():
         print("Moving food servo")
+        set_foodangle(0)
+        time.sleep(1)
+
+        set_foodangle(60)
+        time.sleep(3)
+
+        set_foodangle(0)
+        time.sleep(1)
 
 def waterservo():
-        print("Moving water servo")
+        print("Moving food servo")
+        set_waterangle(0)
+        time.sleep(1)
+
+        set_waterangle(60)
+        time.sleep(3)
+
+        set_waterangle(0)
+        time.sleep(1)
+
+def set_foodangle(angle):
+        duty_cycle = ((angle / 180) * (duty_cycle_max - duty_cycle_min)) + duty_cycle_min
+        fservo.ChangeDutyCycle(duty_cycle)
+        time.sleep(0.3) #Allow time for servo to move
+
+def set_waterangle(angle):
+        duty_cycle = ((angle / 180) * (duty_cycle_max - duty_cycle_min)) + duty_cycle_min
+        wservo.ChangeDutyCycle(duty_cycle)
+        time.sleep(0.3) #Allow time for servo to move
 
 def warningemail():
-        print("Insert warning email here")
+        global last_notification_time, enforce_limit
+        current_time = datetime.datetime.now()
+        time_difference = current_time - last_notification_time
+        if not enforce_limit or time_difference.total_seconds() >= 6 * 60 * 60: #6 hours in seconds
 
+                print("Warning email has been sent.")
+
+                #IFTTT- To do your own version, use the following template:
+                #requests.post('https://maker.ifttt.com/trigger/{EVENT_NAME}/with/key/{YOUR_API_KEY}')
+                requests.post('https://maker.ifttt.com/trigger/warningemail()/with/key/cnYws6C-8NytxZSNhs8cPD') #Sends warning email noti>
+
+                #Update the last notification time
+                last_notification_time = current_time
+                print("Last notification time:", last_notification_time.strftime("%H:%M:%S"))
+        else:
+                print("Skipping email notification due to time restriction.")
+				
 while True:
         current_time = datetime.datetime.now().strftime("%H:%M:%S\n")
 
@@ -103,7 +185,7 @@ while True:
                 watercheck()
 
         elif test_wrange is True:
-                print("\nTesting water bowl in progress:\n")
+                print("\n\nTesting water bowl in progress:\n")
                 watercheck()
 
         else:
