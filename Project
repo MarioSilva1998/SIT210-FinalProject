@@ -25,8 +25,7 @@ fservo.start(0)
 wservo = GPIO.PWM(waterservopin, frequency)
 wservo.start(0)
 
-#When using test parameters, comment individual ranges out from time_ranges if current time is in range
-#Time checks for pellets
+# IMPORTANT: When using test parameters, comment ranges out e.g. # (datetime.time (6,0), datetime.time(7,0)) from time_ranges if current >#Time checks for pellets
 time_ranges = [
         (datetime.time(6, 0), datetime.time(7,0)), #6am - 7am
         (datetime.time(12, 0), datetime.time(13,0)), #12pm - 1pm
@@ -47,10 +46,10 @@ test_wrange = True #Change to True when testing water dispensing time
 #Testing weight paremeters
 #Food bowl
 #test_previous = 340 #Uncomment when testing (simulates previous check)
-test_fweight = 340 #Testing food weight
+test_fweight = 360 #Testing food weight- CHANGE THIS NUMBER TO SIMULATE FOOD WEIGHT
 
 #Water bowl
-test_wweight = 340 #Testing water weight
+test_wweight = 380 #Testing water weight - CHANGE THIS NUMBER TO SIMULATE WATER WEIGHT
 
 #--------------------------------------------------
 #Weight Check
@@ -74,6 +73,8 @@ def foodcheck():
         elif detected_weight <= 340 or test_fweight <= 340: #Change 340 to the weight of your bowl + 10 grams
                 print("Food is low. Refilling in progress...")
                 foodservo()
+        elif detected_weight > 340 and detected_weight < 1000 or test_fweight > 340 and test_fweight < 1000:
+                print("Food is not low. Will check again later.")
         elif detected_weight >= 1000 or test_fweight >= 1000:
                 print("A rabbit has jumped in the bowl.")
         else:
@@ -91,6 +92,8 @@ def watercheck():
         if detected_waterweight <= 360 or test_wweight <= 360: #Change 360 to the weight of your bowl + 30 grams
                 print("Water is low. Refilling in progress...")
                 waterservo()
+        elif detected_waterweight > 360 and detected_waterweight < 1000 or test_wweight > 360 and test_wweight < 1000:
+                print("Water is not low. Will check again later.")
         elif detected_waterweight >= 1000 or test_wweight >= 1000:
                 print("Splash! A rabbit has jumped in the bowl.")
         else:
@@ -98,12 +101,15 @@ def watercheck():
 
 def get_weight():
         #replace this with load cell sensor
-        return 341.5 #sample weight
+        #return 340 #sample weight
         #return random.uniform(330, 350) #Random weight between 330 and 350 for testing
+        return test_fweight #Testing weight only
+
 
 def get_waterweight():
         #replace this with load cell sensor
-        return 341.5 #sample weight
+        #return 361.5 #sample weight
+        return test_wweight
 
 def foodservo():
         print("Moving food servo")
@@ -117,7 +123,7 @@ def foodservo():
         time.sleep(1)
 
 def waterservo():
-        print("Moving food servo")
+        print("Moving water servo")
         set_waterangle(0)
         time.sleep(1)
 
@@ -154,7 +160,8 @@ def warningemail():
                 print("Last notification time:", last_notification_time.strftime("%H:%M:%S"))
         else:
                 print("Skipping email notification due to time restriction.")
-				
+
+#-----------------------------------------------------------------------
 while True:
         current_time = datetime.datetime.now().strftime("%H:%M:%S\n")
 
@@ -195,4 +202,4 @@ while True:
 
         print("\n---------------------------------------")
 
-        time.sleep(60) #Checks once every minute
+        time.sleep(60) #Loops once every minute
