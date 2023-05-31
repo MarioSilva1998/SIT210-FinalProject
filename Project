@@ -1,0 +1,116 @@
+import datetime
+import time
+import random
+
+
+#When using test parameters, comment individual ranges out from time_ranges if current time is in range
+#Time checks for pellets
+time_ranges = [
+        (datetime.time(6, 0), datetime.time(7,0)), #6am - 7am
+        (datetime.time(12, 0), datetime.time(13,0)), #12pm - 1pm
+        (datetime.time(18, 0), datetime.time(19,0)), #6pm - 7pm
+        (datetime.time(0, 0), datetime.time(1,0)) #12am - 1am
+]
+
+previous_weight = None #Variable to store the previous weight
+test_previous = None #Testing previous variable
+
+#Testing time parameters
+test_prange = True #Change to True when testing pellet dispensing time
+test_wrange = True #Change to True when testing water dispensing time
+
+#Testing weight paremeters
+#Food bowl
+#test_previous = 340 #Uncomment when testing (simulates previous check)
+test_fweight = 340 #Testing food weight
+
+#Water bowl
+#--------------------------------------------------
+#Weight Check
+def foodcheck():
+        global previous_weight #Declared as a global variable
+        print("---[FOOD]---")
+        print("Checking weight of food bowl...")
+
+        detected_weight = get_weight()
+
+
+        if previous_weight is not None and abs(previous_weight - detected_weight) <= 10:
+                print("Warning: Weight has not changed significantly since the last 6-hour check.")
+                warningemail()
+
+        if test_previous is not None and abs(test_previous - test_fweight) <=10:
+                print("Test warning showing that food weight hasn't changed since last check.")
+
+        if detected_weight <= 340 or test_fweight <= 340: #Change 340 to the weight of your bowl + 10 grams
+                print("Food is low. Refilling in progress...")
+                foodservo()
+        elif detected_weight > 1000 or test_fweight >= 1000:
+                print("A rabbit has jumped in the bowl.")
+        else:
+                print("Test")
+
+        #Update previous weight with current weight
+        previous_weight = detected_weight
+
+
+def watercheck():
+        print("---[WATER]---")
+        print("Checking weight of water bowl...")
+        waterservo()
+
+def get_weight():
+        #replace this with load cell sensor
+        return 341.5 #sample weight
+        #return random.uniform(330, 350) #Random weight between 330 and 350 for testing
+
+def foodservo():
+        print("Moving food servo")
+
+def waterservo():
+        print("Moving water servo")
+
+def warningemail():
+        print("Insert warning email here")
+
+while True:
+        current_time = datetime.datetime.now().strftime("%H:%M:%S\n")
+
+        print("Current Time:", current_time)
+
+        time_within_range = False
+        for start_time, end_time in time_ranges:
+                if start_time <= datetime.datetime.now().time() <= end_time:
+                        time_within_range = True
+                        break
+
+        #Food ---------------
+        if time_within_range:
+                foodcheck()
+
+        elif test_prange is True:
+                print("Testing food bowl in progress:\n")
+                foodcheck()
+
+        else:
+                print("---[FOOD]---")
+                print("Not time to check food bowl.\n")
+        #---------------------
+        #Water ---------------
+        #Checks to see if current minute is 0 (indicating that it is the start of the hour)
+        current_minute = datetime.datetime.now().minute
+        if current_minute == 0:
+                watercheck()
+
+        elif test_wrange is True:
+                print("\nTesting water bowl in progress:\n")
+                watercheck()
+
+        else:
+                print("---[WATER]---")
+                print("Not time to check water bowl.")
+        #---------------------
+
+        print("\n---------------------------------------")
+
+        time.sleep(60) #Checks once every minute
