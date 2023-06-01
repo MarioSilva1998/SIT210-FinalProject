@@ -41,25 +41,26 @@ test_previous = None #Testing previous variable
 
 #Testing time parameters
 test_prange = True #Change to True when testing pellet dispensing time
-test_wrange = True #Change to True when testing water dispensing time
+test_wrange = True#Change to True when testing water dispensing time
 
 #Testing weight paremeters
 #Food bowl
-#test_previous = 340 #Uncomment when testing (simulates previous check)
-test_fweight = 360 #Testing food weight- CHANGE THIS NUMBER TO SIMULATE FOOD WEIGHT
+test_previous = 340 #Uncomment when testing (simulates previous check)
+test_fweight = 335 #Testing food weight- CHANGE THIS NUMBER TO SIMULATE FOOD WEIGHT
 
 #Water bowl
-test_wweight = 380 #Testing water weight - CHANGE THIS NUMBER TO SIMULATE WATER WEIGHT
+test_wweight = 360 #Testing water weight - CHANGE THIS NUMBER TO SIMULATE WATER WEIGHT
 
 #--------------------------------------------------
 #Weight Check
 def foodcheck():
-        global previous_weight, test_fweight, test_previous #Declared as a global variable
+        #test_fweight possibly not required here.
+        global previous_weight, test_fweight, test_previous#Declared as a global variable
         print("---[FOOD]---")
         print("Checking weight of food bowl...")
-
         detected_weight = get_weight()
-
+        #print("Current weight is:", detected_weight,"g") #Uncomment this if using weight sensor
+        print("Current weight is:", test_fweight,"g")
         '''
         #Comment next three lines out when testing
         if previous_weight is not None and abs(previous_weight - detected_weight) <= 10:
@@ -71,7 +72,7 @@ def foodcheck():
                 warningemail()
 
         elif detected_weight <= 340 or test_fweight <= 340: #Change 340 to the weight of your bowl + 10 grams
-                print("Food is low. Refilling in progress...")
+                print("Food is low.")
                 foodservo()
         elif detected_weight > 340 and detected_weight < 1000 or test_fweight > 340 and test_fweight < 1000:
                 print("Food is not low. Will check again later.")
@@ -85,12 +86,15 @@ def foodcheck():
 
 
 def watercheck():
+        global test_wweight
         print("---[WATER]---")
         print("Checking weight of water bowl...")
-
         detected_waterweight = get_waterweight()
+        #print("Current weight is:", detected_waterweight,"g") #Uncomment this if using weight sensor
+        print("Current weight is:", test_wweight,"g")
+
         if detected_waterweight <= 360 or test_wweight <= 360: #Change 360 to the weight of your bowl + 30 grams
-                print("Water is low. Refilling in progress...")
+                print("Water is low.")
                 waterservo()
         elif detected_waterweight > 360 and detected_waterweight < 1000 or test_wweight > 360 and test_wweight < 1000:
                 print("Water is not low. Will check again later.")
@@ -110,20 +114,28 @@ def get_waterweight():
         #replace this with load cell sensor
         #return 361.5 #sample weight
         return test_wweight
-
+		
 def foodservo():
-        print("Moving food servo")
+        global test_fweight
+        print("Refilling food bowl...")
         set_foodangle(0)
         time.sleep(1)
 
-        set_foodangle(60)
+        set_foodangle(40)
         time.sleep(3)
 
         set_foodangle(0)
         time.sleep(1)
+        test_fweight = test_fweight + 5 #Adds 5 grams to test_fweight to simulate pellets being dispensed into bowl
+        print("New weight:", test_fweight,"g")
 
-def waterservo():
-        print("Moving water servo")
+        duty_cycle_min = 0
+        duty_cycle_max = 0
+
+
+def waterservo(): #Note, pump isn't working so I used a servo to simulate the dispensing of water
+        global test_wweight
+        print("Refilling water bowl...")
         set_waterangle(0)
         time.sleep(1)
 
@@ -132,6 +144,11 @@ def waterservo():
 
         set_waterangle(0)
         time.sleep(1)
+        test_wweight = test_wweight + 100 #Adds 5 grams to test_fweight to simulate pellets being dispensed into bowl
+        print("New weight:", test_wweight,"g")
+
+        duty_cycle_min = 0
+        duty_cycle_max = 0
 
 def set_foodangle(angle):
         duty_cycle = ((angle / 180) * (duty_cycle_max - duty_cycle_min)) + duty_cycle_min
@@ -147,7 +164,7 @@ def warningemail():
         global last_notification_time, enforce_limit
         current_time = datetime.datetime.now()
         time_difference = current_time - last_notification_time
-        if not enforce_limit or time_difference.total_seconds() >= 6 * 60 * 60: #6 hours in seconds
+        if not enforce_limit or time_difference.total_seconds() >= 6 * 60 * 60: #6 hours in seconds. Checks to see if an email has been s>
 
                 print("Warning email has been sent.")
 
@@ -160,8 +177,8 @@ def warningemail():
                 print("Last notification time:", last_notification_time.strftime("%H:%M:%S"))
         else:
                 print("Skipping email notification due to time restriction.")
-
 #-----------------------------------------------------------------------
+
 while True:
         current_time = datetime.datetime.now().strftime("%H:%M:%S\n")
 
@@ -202,4 +219,4 @@ while True:
 
         print("\n---------------------------------------")
 
-        time.sleep(60) #Loops once every minute
+        time.sleep(10) #Loops once every minute
